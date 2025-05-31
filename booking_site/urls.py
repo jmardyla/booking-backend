@@ -21,5 +21,7 @@ from django.urls import path, include
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
-    path("listings/", include("listings.urls")),
+    # Add API specific path for frontend to use
+    path("api/listings/", include("listings.urls")),
+    path("api/accounts/", include("accounts.urls")),
 ]

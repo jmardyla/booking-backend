@@ -1,41 +1,43 @@
-from django.shortcuts import render, redirect
-from .forms import ListingForm
-from django.contrib.auth.decorators import login_required
 from .models import Listing
+from rest_framework import viewsets
+from .serializers import ListingSerializer
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 
-def listing_list(request):
-    sort_by = request.GET.get("sort", "newest")  # default sort by newest
-    listings = Listing.objects.all()
+# API ViewSet
+@method_decorator(csrf_exempt, name="dispatch")
+class ListingViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows listings to be viewed or edited.
+    """
 
-    if sort_by == "price_asc":
-        listings = listings.order_by("price_per_night")
-    elif sort_by == "price_desc":
-        listings = listings.order_by("-price_per_night")
-    elif sort_by == "oldest":
-        listings = listings.order_by("created_at")
-    else:  # newest
-        listings = listings.order_by("-created_at")
+    queryset = Listing.objects.all().order_by("-created_at")
+    serializer_class = ListingSerializer
 
-    return render(
-        request,
-        "listing_list.html",
-        {
-            "listings": listings,
-            "sort_by": sort_by,
-        },
-    )
+    def perform_create(self, serializer):
+        # This will automatically set the owner when creating
+        serializer.save(owner=self.request.user)
 
+    def get_queryset(self):
+        """
+        Optionally restricts the returned listings by filtering against
+        query parameters in the URL.
+        """
+        queryset = Listing.objects.all()
+        sort_by = self.request.query_params.get("sort")
+        location = self.request.query_params.get("location")
 
-@login_required
-def create_listing(request):
-    if request.method == "POST":
-        form = ListingForm(request.POST)
-        if form.is_valid():
-            listing = form.save(commit=False)  # don't save to DB yet
-            listing.owner = request.user  # set the owner to the logged-in user
-            listing.save()  # now save to DB
-            return redirect("listing_list")  # redirect after success
-    else:
-        form = ListingForm()
-    return render(request, "create_listing.html", {"form": form})
+        if sort_by == "price_asc":
+            queryset = queryset.order_by("price_per_night")
+        elif sort_by == "price_desc":
+            queryset = queryset.order_by("-price_per_night")
+        elif sort_by == "oldest":
+            queryset = queryset.order_by("created_at")
+        else:  # newest
+            queryset = queryset.order_by("-created_at")
+
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+
+        return queryset

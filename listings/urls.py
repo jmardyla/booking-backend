@@ -1,7 +1,10 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+router = DefaultRouter()
+router.register(r'', views.ListingViewSet, basename='listing')
+
 urlpatterns = [
-    path("", views.listing_list, name="listing_list"),
-    path("create/", views.create_listing, name="create_listing"),
+    path('', include(router.urls)),
 ]
